@@ -7,6 +7,31 @@ import shutil
 # Target format for all files:
 # YYYYMMDD_HHMMSS.ending
 
+# Directory with Images and Videos
+input_directory = 'path\\to\\input'
+output_directory = 'path\\to\\output'
+
+# Part of the name that should be removed (order matters, the version with underscore always goes first)
+to_replace = ['IMG_', 'IMG-', 'IMG', 'VID_', 'VID-', 'VID', 'PXL_', 'PXL-', 'PXL', '_iOS']
+
+# Image formats
+img_formats = ('.jpg', '.jpeg', '.png', '.HEIC')
+
+# Video formats
+vid_formats = ('.mp4', '.MOV')
+
+# Initialize counters:
+count_success = 0
+count_snapchat = 0
+count_failure = 0
+count_all = 0
+
+# Regex patterns
+correct_pattern = r'^\d{8}_\d{6}\.\w+$'
+missing_underscore_pattern = r'^(\d{8})(\d{6})(\.\w+)$'
+unnecessary_chars_pattern = r'^\d{8}_\d{6}'
+wrong_underscore_pattern = r'^(\d{8})(\d{6})_(\d{8})(\d{6})(\.\w+)$'
+
 
 # extract the DateTimeOriginal field from an image
 def get_exif_DateTimeOriginal(image_path):
@@ -92,31 +117,6 @@ def snapchat_video_renamer():
     else:
         return None
 
-
-# Directory with Images and Videos
-input_directory = 'path\\to\\input'
-output_directory = 'path\\to\\output'
-
-# Part of the name that should be removed (order matters, the version with underscore always goes first)
-to_replace = ['IMG_', 'IMG-', 'IMG', 'VID_', 'VID-', 'VID', 'PXL_', 'PXL-', 'PXL', '_iOS']
-
-# Image formats 
-img_formats = ('.jpg', '.jpeg', '.png', '.HEIC')
-
-# Video formats
-vid_formats = ('.mp4', '.MOV')
-
-# Initialize counters:
-count_success = 0
-count_snapchat = 0
-count_failure = 0
-count_all = 0
-
-# Regex patterns
-correct_pattern = r'^\d{8}_\d{6}\.\w+$'
-missing_underscore_pattern = r'^(\d{8})(\d{6})(\.\w+)$'
-unnecessary_chars_pattern = r'^\d{8}_\d{6}'
-wrong_underscore_pattern = r'^(\d{8})(\d{6})_(\d{8})(\d{6})(\.\w+)$'
 
 # Go through the input directory and rename images
 for file in os.listdir(input_directory):
