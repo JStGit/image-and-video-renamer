@@ -1,5 +1,6 @@
 import os
 import re
+import sys
 import exifread
 import ffmpeg
 import shutil
@@ -10,6 +11,11 @@ import shutil
 # Directory with Images and Videos
 input_directory = 'path\\to\\input'
 output_directory = 'path\\to\\output'
+
+# Operating mode:
+# 'copy' = The original is left untouched and the files get copied to the output directory
+# 'inplace' = The original files are renamed
+mode = 'inplace'
 
 # Part of the name that should be removed (order matters, the version with underscore always goes first)
 to_replace = ['IMG_', 'IMG-', 'IMG', 'VID_', 'VID-', 'VID', 'PXL_', 'PXL-', 'PXL', '_iOS']
@@ -183,7 +189,13 @@ for file in os.listdir(input_directory):
         # Rename the image and copy it
         if new_filename is not None:
             try:
-                shutil.copy2(os.path.join(input_directory, file), os.path.join(output_directory, new_filename))
+                if mode == 'copy':
+                    shutil.copy2(os.path.join(input_directory, file), os.path.join(output_directory, new_filename))
+                elif mode == 'inplace':
+                    os.rename(os.path.join(input_directory, file), os.path.join(input_directory, new_filename))
+                else:
+                    print("Unknown operation mode! Exiting the program...")
+                    sys.exit(9)
                 if file is not new_filename:
                     count_success += 1
                 print(f"Processed {image_type}: {file} -> {new_filename}")
