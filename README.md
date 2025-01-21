@@ -13,8 +13,10 @@ If we further include screenshots or images exported from social media apps like
 This tool uses the names of the files and metadata to rename images and videos to the yyyymmdd_hhmmss.ending convention as this is most easily sortable, as sorting by name is a universal feature.
 
 # Usage
-Put the path to the files that should be processed in **input_directory** in line 11. 
-Secondly, put the output path in **output_directory** in the next line. 
+Put the path to the files that should be processed in **input_directory** in line 12. 
+Secondly, put the output path in **output_directory** in the next line.
+Furthermore, the program features two modes of operation that can be set in line 18. By default, the program operates in copy mode where the original images are not changed and the renamed files are copied to the output directory. If inplace mode is selected, all changes are made to the original files.
+
 The program can now be run.
 
 # Known issues
