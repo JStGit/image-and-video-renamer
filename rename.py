@@ -12,6 +12,9 @@ import shutil
 input_directory = 'path\\to\\input'
 output_directory = 'path\\to\\output'
 
+# Dictionary to store new and old file names
+file_dict = {}
+
 # Operating mode:
 # 'copy' = The original is left untouched and the files get copied to the output directory
 # 'inplace' = The original files are renamed
@@ -21,14 +24,14 @@ mode = 'inplace'
 to_replace = ['IMG_', 'IMG-', 'IMG', 'VID_', 'VID-', 'VID', 'PXL_', 'PXL-', 'PXL', '_iOS']
 
 # Image formats
-img_formats = ('.jpg', '.jpeg', '.png', '.HEIC')
+img_formats = ('.jpg', '.jpeg', '.png', '.heic')
 
 # Video formats
-vid_formats = ('.mp4', '.MOV')
+vid_formats = ('.mp4', '.mov')
 
 # Initialize counters:
 count_success = 0
-count_snapchat = 0
+count_copied = 0
 count_failure = 0
 count_all = 0
 
@@ -37,6 +40,11 @@ correct_pattern = r'^\d{8}_\d{6}\.\w+$'
 missing_underscore_pattern = r'^(\d{8})(\d{6})(\.\w+)$'
 unnecessary_chars_pattern = r'^\d{8}_\d{6}'
 wrong_underscore_pattern = r'^(\d{8})(\d{6})_(\d{8})(\d{6})(\.\w+)$'
+too_many_underscore_pattern = r'^(\d{8})(\d{6})_(\d+)_(\d{8})(\d{6})(\.\w+)$'
+
+# Define output colors
+CYELLOW = '\33[33m'
+CEND = '\33[0m'
 
 
 # extract the DateTimeOriginal field from an image
@@ -58,114 +66,151 @@ def get_video_metadata_creation_date(video_path):
     return creation_time
 
 
-# Function to rename Whatsapp Images downloaded from a chat
-def whatsapp_saved_renamer():
-    match_whatsapp = re.match(r'WhatsApp Image (\d{4}-\d{2}-\d{2}) at (\d{2}\.\d{2}\.\d{2})\.jpeg', file)
-    date_str = match_whatsapp.group(1)
-    time_str = match_whatsapp.group(2).replace('.', '')
-    new_filename = f"{date_str.replace('-', '')}_{time_str}.jpeg"
-    return new_filename
-
-
-# Function to rename Whatsapp Images copied from a chat using metadata
-def whatsapp_chat_renamer():
+def rename_img_using_metadata():
     image_path = os.path.join(input_directory, file)
+    extension = os.path.splitext(file)[1]
     exif_DateTimeOriginal = get_exif_DateTimeOriginal(image_path)
     if exif_DateTimeOriginal is not None:
         date_str = exif_DateTimeOriginal.replace(':', '').replace(' ', '_')
-        new_filename = f"{date_str}.jpeg"
+        new_filename = f"{date_str}{extension}"
         return new_filename
     else:
-        return None
+        return file
+
+
+# Function to rename Whatsapp Images copied from a chat using metadata
+def whatsapp_image_renamer():
+    return rename_img_using_metadata()
 
 
 # Function to rename screenshots
 def screenshot_renamer():
-    match_screenshot = re.match(r'Screenshot_(\d{4}-\d{2}-\d{2})-(\d{2})-(\d{2})-(\d{2})-\d{2}_[a-z0-9]+\.jpg', file)
+    match_screenshot = re.match(r'Screenshot_(\d{4}-\d{2}-\d{2})-(\d{2})-(\d{2})-(\d{2})-\d{2}_[a-z0-9]+\.\w+', file)
     date_str = match_screenshot.group(1)
     time_str = match_screenshot.group(2) + match_screenshot.group(3) + match_screenshot.group(4)
-    new_filename = f"{date_str.replace('-', '')}_{time_str}.jpg"
+    extension = os.path.splitext(file)[1]
+    new_filename = f"{date_str.replace('-', '')}_{time_str}{extension}"
     return new_filename
 
 
 # Function to rename iphone images using metadata
 def iphone_image_renamer():
-    image_path = os.path.join(input_directory, file)
-    exif_DateTimeOriginal = get_exif_DateTimeOriginal(image_path)
-    if exif_DateTimeOriginal is not None:
-        date_str = exif_DateTimeOriginal.replace(':', '').replace(' ', '_')
-        new_filename = f"{date_str}.HEIC"
-        return new_filename
-    else:
-       return None
+    return rename_img_using_metadata()
 
 
-# Function to rename iphone videos using metadata
-def iphone_video_renamer():
+# Function to rename videos using metadata
+def video_renamer():
     video_path = os.path.join(input_directory, file)
+    file_extension = os.path.splitext(file)[1]
     creation_time = get_video_metadata_creation_date(video_path)
     if creation_time:
         date_str = creation_time.replace('-', '').replace(':', '').replace('T', '_').split('.')[0]
-        new_filename = f"{date_str}.mov"
+        new_filename = f"{date_str}{file_extension}"
         return new_filename
     else:
-        return None
+        return file
 
 
-# Function to rename iphone videos using metadata
-def snapchat_video_renamer():
-    video_path = os.path.join(input_directory, file)
-    creation_time = get_video_metadata_creation_date(video_path)
-    if creation_time:
-        date_str = creation_time.replace('-', '').replace(':', '').replace('T', '_').split('.')[0]
-        new_filename = f"{date_str}.mp4"
-        return new_filename
-    else:
-        return None
+# Function to wait for feedback from the user
+def wait_for_user_input():
+    while True:
+        user_input = input("Press 'Y' to apply the new names or 'N' to stop: ").strip().upper()
+        if user_input == 'Y':
+            break
+        elif user_input == 'N':
+            print("Stopping without renaming...")
+            exit(2)
+        else:
+            print("Invalid input. Please press 'Y' to continue or 'N' to stop.")
 
+
+# Function to print out all necessary renamings as a table
+def print_dict_as_table(dictionary):
+    # Print the table header
+    print('The following table shows all files with name changes in yellow:')
+    print(f"{'Old filename':<75} | {'New filename':<30}")
+    print("-" * 108)
+
+    # Print each key-value pair in the dictionary
+    for key, value in dictionary.items():
+        if key != value:
+            print(CYELLOW + f"{key:<75}" + CEND + " | " + CYELLOW + f"{value:<30}" + CEND)
+        else:
+            print(f"{key:<75} | {value:<30}")
+
+
+# Function to apply the renaming stored in the dict
+def rename_files(dictionary):
+    count_s = 0
+    count_f = 0
+    count_c = 0
+
+    for key, value in dictionary.items():
+        try:
+            if mode == 'copy':
+                shutil.copy2(os.path.join(input_directory, key), os.path.join(output_directory, value))
+            elif mode == 'inplace':
+                os.rename(os.path.join(input_directory, key), os.path.join(output_directory, value))
+            else:
+                print("Unknown operation mode! Exiting the program...")
+                sys.exit(9)
+
+            if key == value:
+                count_c += 1
+            else:
+                count_s += 1
+        except:
+            count_f += 1
+
+    return count_s, count_c, count_f
+
+
+# Main Sequence:
+# Set output correctly if inplace mode is used:
+if mode == 'inplace':
+    output_directory = input_directory
 
 # Go through the input directory and rename images
 for file in os.listdir(input_directory):
-    image_type = None
+    file_type = None
     new_filename = None
     count_all += 1
     # Check for the correct ending
-    if file.endswith(img_formats) or file.endswith(vid_formats):
-        # Check for special cases: WhatsApp saved from chat
-        if 'WhatsApp' in file:
-            image_type = 'WhatsApp (exported) file'
-            new_filename = whatsapp_saved_renamer()
-        # Check for special cases: WhatsApp internal naming
-        elif '-WA' in file:
-            image_type = 'WhatsApp (chat) file'
-            new_filename = whatsapp_chat_renamer()
+    if file.lower().endswith(img_formats) or file.lower().endswith(vid_formats):
+        # Check for special cases: WhatsApp files (works only if metadata is included)
+        if 'WhatsApp' in file or '-WA' in file:
+            file_type = 'WhatsApp file'
+            if file.lower().endswith(img_formats):
+                new_filename = whatsapp_image_renamer()
+            elif file.lower().endswith(vid_formats):
+                new_filename = video_renamer()
         # Check for special cases: Screenshot
         elif 'Screenshot' in file:
-            image_type = 'Screenshot'
+            file_type = 'Screenshot'
             new_filename = screenshot_renamer()
         # Check for special cases: Snapchat
         elif 'Snapchat' in file:
-            image_type = 'Snapchat file'
+            file_type = 'Snapchat file'
             # Snapchat videos contain the creation_time as metadata
             if file.lower().endswith(vid_formats):
-                new_filename = snapchat_video_renamer()
+                new_filename = video_renamer()
             # Snapchat images do not contain any necessary information
             elif file.lower().endswith(img_formats):
                 new_filename = file
-                count_snapchat += 1
+                count_copied += 1
         # Check for special cases: Iphone Image
-        elif file.lower().endswith('.heic'):
-            image_type = 'Iphone image'
+        elif 'IMG_' and file.lower().endswith('.heic'):
+            file_type = 'Iphone image'
             new_filename = iphone_image_renamer()
         # Check for special cases: Iphone Video
         elif file.lower().endswith('.mov'):
-            image_type = 'Iphone video'
-            new_filename = iphone_video_renamer()
+            file_type = 'Iphone video'
+            new_filename = video_renamer()
         # Normal format, only some parts need to be removed
         else:
-            image_type = 'file'
+            file_type = 'file'
             new_filename = file
-            for part in to_replace: 
+            for part in to_replace:
                 new_filename = new_filename.replace(part, '')
 
         # check if additional truncation needs to be done
@@ -174,6 +219,7 @@ for file in os.listdir(input_directory):
             missing_underscore_match = re.match(missing_underscore_pattern, new_filename)
             unnecessary_chars_match = re.match(unnecessary_chars_pattern, new_filename)
             wrong_underscore_match = re.match(wrong_underscore_pattern, new_filename)
+            too_many_underscore_match = re.match(too_many_underscore_pattern, new_filename)
 
             if missing_underscore_match:
                 new_filename = missing_underscore_match.group(1) + '_' + missing_underscore_match.group(
@@ -185,28 +231,31 @@ for file in os.listdir(input_directory):
             if wrong_underscore_match:
                 new_filename = wrong_underscore_match.group(1) + '_' + wrong_underscore_match.group(
                     2) + wrong_underscore_match.group(5)
+            if too_many_underscore_match:
+                new_filename = too_many_underscore_match.group(1) + '_' + too_many_underscore_match.group(
+                    2) + too_many_underscore_match.group(6)
 
-        # Rename the image and copy it
-        if new_filename is not None:
-            try:
-                if mode == 'copy':
-                    shutil.copy2(os.path.join(input_directory, file), os.path.join(output_directory, new_filename))
-                elif mode == 'inplace':
-                    os.rename(os.path.join(input_directory, file), os.path.join(input_directory, new_filename))
-                else:
-                    print("Unknown operation mode! Exiting the program...")
-                    sys.exit(9)
-                if file is not new_filename:
-                    count_success += 1
-                print(f"Processed {image_type}: {file} -> {new_filename}")
-            except:
-                count_failure += 1
-                print(f"Error renaming {image_type}: {file}")
-        else:
-            count_failure += 1
-            print(f"Metadata error {image_type}: {file}")
+        # Check if the new name is unique or if a suffix needs to be applied
+        unique_name = new_filename
+        counter = 1
+        while unique_name in file_dict.values():
+            base, extension = os.path.splitext(new_filename)
+            unique_name = f"{base} ({counter}){extension}"
+            counter += 1
+        file_dict[file] = unique_name
+
+
+# Show the result of the renaming
+print_dict_as_table(file_dict)
+
+# Ask the user before applying
+wait_for_user_input()
+
+# apply the renaming
+count_success, count_copied, count_failure = rename_files(file_dict)
 
 # Print final statistics
 print("\nAll image- and videofiles processed!")
-print(f"{count_all} images processed: {count_success} successful renamings, {count_failure} failed renamings, {count_snapchat} snapchat file(s) copied,"
-      f" {count_all - (count_success + count_failure + count_snapchat)} not processed")
+print(f"{count_all} images processed: {count_success} successful renamings, {count_copied} copied without renaming"
+      f", {count_failure} failures while copying/renaming, {count_all - (count_success + count_copied + count_failure)}"
+      f" not processed")
