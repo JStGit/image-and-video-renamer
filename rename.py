@@ -18,7 +18,7 @@ file_dict = {}
 # Operating mode:
 # 'copy' = The original is left untouched and the files get copied to the output directory
 # 'inplace' = The original files are renamed
-mode = 'inplace'
+mode = 'copy'
 
 # Part of the name that should be removed (order matters, the version with underscore always goes first)
 to_replace = ['IMG_', 'IMG-', 'IMG', 'VID_', 'VID-', 'VID', 'PXL_', 'PXL-', 'PXL', '_iOS']
