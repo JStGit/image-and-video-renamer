@@ -15,9 +15,10 @@ This tool uses the names of the files and metadata to rename images and videos t
 # Usage
 Put the path to the files that should be processed in **input_directory** in line 12. 
 Secondly, put the output path in **output_directory** in the next line.
-Furthermore, the program features two modes of operation that can be set in line 18. By default, the program operates in copy mode where the original images are not changed and the renamed files are copied to the output directory. If inplace mode is selected, all changes are made to the original files.
+Furthermore, the program features two modes of operation that can be set in line 21. By default, the program operates in copy mode where the original images are not changed and the renamed files are copied to the output directory. If inplace mode is selected, all changes are made to the original files.
 
-The program can now be run.
+The program can now be run. The program will first create all new names and will display all old and new names side by side in a table. Names that have changed are shown in yellow. The user can then accept the changes with 'Y' to apply them or deny them with 'N'.
 
 # Known issues
-Snapchat images do not include useful metadata or a timestamp in their name, so they cannot be renamed.
+ - Snapchat images do not include useful metadata or a timestamp in their name, so they cannot be renamed
+ - WhatApp files that are exported from a chat also do not include useful metadata and cannot be renamed
